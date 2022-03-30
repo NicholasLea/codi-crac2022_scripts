@@ -1,4 +1,4 @@
-# codi2022_scripts
+# CODI-CRAC2022_scripts
 Scripts to convert the [Universal Anaphora](https://github.com/UniversalAnaphora/UniversalAnaphora/blob/main/documents/UA_CONLL_U_Plus_proposal_v1.0.md) format to jsonlines
 
 1. `helper.py` contains scripts to convert UA to jsonlines format
