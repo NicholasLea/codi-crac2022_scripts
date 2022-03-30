@@ -1,12 +1,12 @@
-# The 2021 CODI/CRAC Shared Task on Anaphoric Reference in Dialogue: A Quick Intro
+# The 2022 CODI/CRAC Shared Task on Anaphoric Reference in Dialogue: A Quick Intro
 
-  Sopan Khosla, Ramesh Manuvinakurike, Vincent Ng, Massimo Poesio, Michael Strube, Juntao Yu, Carolyn Rose
+  Juntao Yu, Sopan Khosla, Ramesh Manuvinakurike, Lori Levin, Vincent Ng, Massimo Poesio, Michael Strube, Carolyn Rose
 
-  https://competitions.codalab.org/competitions/30312
+  https://codalab.lisn.upsaclay.fr/competitions/614
 
-Version 1.0, 2021/06/15
+Version 1.0, 2022/03/30
 
-The objective of this  shared task is to go above and beyond the simple cases of coreference resolution in written text on which NLP has mostly focused so far, which  arguably overestimate the performance of current SOTA models.
+After the success of the [first shared task on Anaphora Resolution in Dialogues](https://competitions.codalab.org/competitions/30312), we decided to repeat the shared task on Anaphora Resolution in Dialogues for another time. This shared task provides will have the same tracks as the first one and will have new test data annotated as well as introduce new gold anaphora phrases for the bridging and discourse deixis.
 
 ## 1. The tasks
 
@@ -88,15 +88,15 @@ as well as two non-dialogue genres:
 
 ## 3. The phases
 
-There will be two main phases for the shared task, and the test phrase will be further divided into a predicted and gold phase. Please look at the Codalab site for exact dates as these may change.
+There will be two main phases for the shared task, and the test phrase will be further divided into a predicted, a gold mention and gold anaphor phase. Please look at the Codalab site for exact dates as these may change.
 
 ###  Development phase
 
-During the development phase, the training data from ARRAU will be made available, as well as gold versions of the dev subsets of the four main corpora.
+During the development phase, the training data from ARRAU and four dialogue corpora will be made available, as well as gold versions of the dev subsets of the four main corpora.
 
 ###  Test phase
 
- The test phase will be divided in two parts: evaluation on predicted data (no markables supplied), and evaluation on gold markables (markables supplied).
+ The test phase will be divided in three parts: evaluation on predicted data (no markables are supplied), evaluation on gold mentions (gold mentions are supplied) and evaluation on gold anaphors (both gold mentions and gold anahpors are supplied).
  
 ## 4. Input and output formats
 
