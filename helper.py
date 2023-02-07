@@ -1,5 +1,6 @@
 from preprocess import *
 
+# 这个被我在test里调用了
 def convert_coref_ua_to_json(UA_PATH, JSON_PATH, MODEL="coref-hoi", SEGMENT_SIZE=512, TOKENIZER_NAME="bert-base-cased"):
     if MODEL == "coref-hoi":
         convert_coref_ua_to_json_coref_hoi(UA_PATH, JSON_PATH, SEGMENT_SIZE, TOKENIZER_NAME)
@@ -22,6 +23,8 @@ Jsonlines key-value format:
     "subtoken_map": <Map between subtoken and original token>,
     'pronouns': []
 '''
+
+# 这个被convert_coref_ua_to_json调用了
 def convert_coref_ua_to_json_coref_hoi(UA_PATH, JSON_PATH, SEGMENT_SIZE, TOKENIZER_NAME):
     
     key_docs, key_doc_sents = get_all_docs(UA_PATH)
@@ -34,7 +37,8 @@ def convert_coref_ua_to_json_coref_hoi(UA_PATH, JSON_PATH, SEGMENT_SIZE, TOKENIZ
             document = get_document(doc, key_docs[doc], 'english', SEGMENT_SIZE, tokenizer)
             output_file.write(json.dumps(document))
             output_file.write('\n')
-            
+
+# 没有被使用
 def convert_bridg_ua_to_json(UA_PATH, JSON_PATH, MODEL="dali_bridging"):
     if MODEL == "dali_bridging":
         convert_bridg_ua_to_json_dali_bridging(UA_PATH, JSON_PATH)
@@ -50,7 +54,9 @@ Jsonlines key-value format:
     "bridging_pairs": <Gold Bridging Pairs>
     "doc_key": <Document Key>,
     "sentences": <Document Sentences>
-'''          
+'''
+
+# 没有被使用
 def convert_bridg_ua_to_json_dali_bridging(UA_PATH, JSON_PATH):
     
     key_docs, key_doc_sents = get_all_docs(UA_PATH)
@@ -109,7 +115,7 @@ def convert_bridg_ua_to_json_dali_bridging(UA_PATH, JSON_PATH):
             output_file.write(json.dumps(doc))
             output_file.write('\n')
             
-            
+# 这个没有被使用
 def convert_coref_json_to_ua(JSON_PATH, UA_PATH, MODEL="coref-hoi"):	
     data = []
     ua_all_lines = []
@@ -196,6 +202,7 @@ def convert_coref_json_to_ua_doc_coref_hoi(json_doc):
 
     return lines
 
+# 这个没有被使用
 def convert_bridg_json_to_ua(JSON_PATH, UA_PATH, MODEL="dali-bridging"):	
     data = []
     ua_all_lines = []
@@ -227,6 +234,7 @@ Expected jsonlines key-value format:
     "sentences": <Document Sentences>
 '''  
 
+# 这个被convert_bridg_json_to_ua调用，他们2个都没有用使用
 def convert_bridg_json_to_ua_doc_dali_bridging(json_doc):
     # TODO: Include metadata
     # TODO: Include sentence breaks 
@@ -284,7 +292,7 @@ def convert_bridg_json_to_ua_doc_dali_bridging(json_doc):
 
     return lines
 
-
+# 这个函数被下面那个没有被使用的函数调用，因此也是没有被使用的
 def discourse_deixis_prev_utt_baseline(key_docs, key_doc_sents, output_path):
 
     with open(output_path, "w") as f:
@@ -373,7 +381,8 @@ def discourse_deixis_prev_utt_baseline(key_docs, key_doc_sents, output_path):
 
 '''
 Baseline for discourse deixis
-'''                
+'''
+# 这个函数是没有被使用的
 def discourse_deixis_baseline(IN_UA_PATH, PRED_UA_PATH, MODEL="previous-utterance"):
                 
     key_docs, key_doc_sents = get_all_docs(IN_UA_PATH)
