@@ -549,7 +549,9 @@ def get_all_docs(path):
     sentences = []
     sentence = []
     doc_name = None
-    for line in open(path):
+    print('path:', path)
+    # https://stackoverflow.com/questions/40997603
+    for line in open(path, encoding='utf-8'): # LK add encoding='utf-8'
         line = line.strip()
         if line.startswith('# newdoc'):
             if doc_name and doc_lines:
