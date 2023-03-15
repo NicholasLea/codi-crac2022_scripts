@@ -3,6 +3,7 @@ from preprocess import *
 # 这个被我在test里调用了
 def convert_coref_ua_to_json(UA_PATH, JSON_PATH, MODEL="coref-hoi", SEGMENT_SIZE=512, TOKENIZER_NAME="bert-base-cased"):
     if MODEL == "coref-hoi":
+        # print("coref-hoi")
         convert_coref_ua_to_json_coref_hoi(UA_PATH, JSON_PATH, SEGMENT_SIZE, TOKENIZER_NAME)
     else:
         raise NotImplementedError
@@ -26,14 +27,35 @@ Jsonlines key-value format:
 
 # 这个被convert_coref_ua_to_json调用了
 def convert_coref_ua_to_json_coref_hoi(UA_PATH, JSON_PATH, SEGMENT_SIZE, TOKENIZER_NAME):
-    
+    print('UA_PATH:', UA_PATH)
+    print('JSON_PATH:', JSON_PATH)
+    print('SEGMENT_SIZE:', SEGMENT_SIZE)
+    print('TOKENIZER_NAME:', TOKENIZER_NAME)
+
+    # 这个key_docs是一个字典，key就是doc_key是'light_dev/episode_7296'这种，value就是一个list,里面的每一个就是单引号包括的CONLLUA的每一行，如
+    #  '1 a _ _ _ _ _ _ _ _ (EntityID=1|MarkableID=markable_1|Min=2|SemType=dn _ _ _ (MarkableID=markable_1|Entity_Type=concrete|Genericity=generic-no'
+    # 另一个对象key_doc_sents也是一个字典，key是doc_key和key_docs一样，value是一个二维的list, [['token1','token2',...],[],...]，是一个句子的每个token，有重复
     key_docs, key_doc_sents = get_all_docs(UA_PATH)
+
+    print('---key_docs 信息---')
+    print('type(key_docs):', type(key_docs))
+    print('key_docs:', len(key_docs))
+    print('key_docs.keys():', key_docs.keys())
+    # print('key_docs[0]:', key_docs['light_dev/episode_7296'])
+
+    print('---key_doc_sents 信息---')
+    print('type(key_doc_sents):', type(key_doc_sents))
+    print('key_doc_sents:', len(key_doc_sents))
+    print('key_doc_sents.keys():', key_doc_sents.keys()) # key_docs, key_doc_sents这两个都是字典，他们的keys是一样的
+    # print('key_doc_sents:', key_doc_sents['light_dev/episode_7296'])
 
     tokenizer = get_tokenizer(TOKENIZER_NAME)
     
     with open(JSON_PATH, "w") as output_file:
-        for doc in key_doc_sents:
-            print(doc)
+        for doc in key_doc_sents: # 注意对于一个字典，对它进行循环的时候返回的是key
+            # print('doc:', doc)
+            # 就是在这一步，把它拆分为了之后经常能看到的那种经典的document，包含doc_key、tokens等等
+            # 注意：document里的tokens是有重复的，且是保留了原始大小写和拼写的token。而sentences是经过tokenizer后的。
             document = get_document(doc, key_docs[doc], 'english', SEGMENT_SIZE, tokenizer)
             output_file.write(json.dumps(document))
             output_file.write('\n')

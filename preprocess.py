@@ -29,7 +29,9 @@ def skip_doc(doc_key):
 def normalize_word(word, language):
     if language == "arabic":
         word = word[:word.find("#")]
-    if word == "/." or word == "/?":
+    if word == "/." or word == "/?": # 这里应该是没有转义的意思，就是单纯的如果是/.，那么就只取.
+        # print('normalize_word 0', word)
+        # print('normalize_word 1', word)
         return word[1:]
     else:
         return word
@@ -134,6 +136,7 @@ class DocumentState(object):
         self.coref_stacks = collections.defaultdict(list)
 
     def finalize(self):
+        print('调用父类的finalize')
         """ Extract clusters; fill other info e.g. speakers, pronouns """
         # Populate speakers from info
         subtoken_idx = 0
@@ -242,49 +245,118 @@ class UADocumentState(DocumentState):
         self.clusters = collections.defaultdict(list)  # {cluster_id: [(first_subtok_idx, last_subtok_idx) for each mention]}
         self.coref_stacks = []#collections.defaultdict(list)
 
+    # 这个类里只有这一个方法
     def finalize(self):
+        print('finalize 开始')
+        # print('self.coref_stacks 开始', self.coref_stacks) # 此时为空
         """ Extract clusters; fill other info e.g. speakers, pronouns """
         # Populate speakers from info
         subtoken_idx = 0
+
+        # 处理speakers
         for seg_info in self.segment_info:
+            # print('seg_info', seg_info)
             speakers = []
+            # 回忆一下seg_info里面放的是是row一整行（list）以及subtoken的长度
             for i, subtoken_info in enumerate(seg_info):
-                if i == 0 or i == len(seg_info) - 1:
+                # print('subtoken_info', subtoken_info)
+                if i == 0 or i == len(seg_info) - 1: # 如果是第一个或者最后一个，添加分隔符
                     speakers.append('[SPL]')
-                elif subtoken_info is not None:  # First subtoken of each word
-                    speakers.append(subtoken_info[9])
+                elif subtoken_info is not None:  # First subtoken of each word（回忆一下对于subtoken的后面几个，它是空的）
+                    # print('subtoken_info', subtoken_info)
+                    speakers.append(subtoken_info[9]) # subtoken_info[9] 是对话者的名字，比如fisherman
+                    # print('subtoken_info[9]', subtoken_info[9]) # subtoken_info[9] 是对话者的名字，比如fisherman
                     # if subtoken_info[4] == 'PRP':  # Uncomment if needed
                     #     self.pronouns.append(subtoken_idx)
+
+                    # print('subtoken_info[-1]', subtoken_info[-1])
                 else:
-                    speakers.append(speakers[-1])
+                    speakers.append(speakers[-1]) # speakers[-1]就是上一个speaker的名字
                 subtoken_idx += 1
-            self.speakers += [speakers]
+
+            # print('speakers', speakers)
+            self.speakers += [speakers] #顾名思义，speakers就是讲话者
+            # print('self.speakers', self.speakers)
 
         # Populate cluster
-        first_subtoken_idx = 0  # Subtoken idx across segments
+        first_subtoken_idx = 0  # Subtoken idx across segments（这个备注这里的across就是跨越不同的segment的意思）
+        # print('len(self.segment_info)', len(self.segment_info))
         subtokens_info = flatten(self.segment_info)
+        # print('len(subtokens_info)', len(subtokens_info))
+        # print('subtokens_info', subtokens_info)
+
+        # print('self.coref_stacks 中间', self.coref_stacks)
+        # 看到while，还是2个点，一个while后面的部分，这里是停止条件，一个是看变量first_subtoken_idx的更改条件
+        # print('subtokens_info', subtokens_info)
         while first_subtoken_idx < len(subtokens_info):
+            # print('------开始while----------')
             subtoken_info = subtokens_info[first_subtoken_idx]
+            # print('first_subtoken_idx', first_subtoken_idx)
+            # 这里的第10个位置正好对应的就是coref那一列。另外subtoken_info里的第一个一定是None，这是在split_into_segments那里手工写的每个seg的开头是None。所以第一个coref是-
             coref = subtoken_info[10] if subtoken_info is not None else '-'
+            # print('coref', coref) # 如 coref (EntityID=72|MarkableID=markable_175|Min=548|SemType=do)
+
+            # print('self.coref_stacks 中间2', self.coref_stacks)
             if coref != '-' and coref != '' and coref != '_':
+                # 最后一个子token的id = 第一个子token的id + subtoken_info[-1]（即subtoken的数量）-1
                 last_subtoken_idx = first_subtoken_idx + subtoken_info[-1] - 1
 
-                parts = coref.split('(')
-                if len(parts[0]):
-                    #the close bracket
+                # 因为有一些coref是 ')(EntityID=72|MarkableID=markable_159|Min=524|SemType=do)'，多出来一个')'，所以要做这一步处理
+                parts = coref.split('(') # coref.split('(')配合len(parts[0])，用来判断这个entity是不是起始的一个，比如下述第7行的a
+                # 左括号(代表着开始，右括号)代表着关闭，如下面，a polished gold是一个
+                # 7     a          _  _  _  _  _  _  _  _  (EntityID=4|MarkableID=markable_4|Min=9|SemType=dn    _  _  _  (MarkableID=markable_4|Entity_Type=substance|Genericity=undersp-substance
+                # 8     polished   _  _  _  _  _  _  _  _  _                                                     _  _  _
+                # 9     gold       _  _  _  _  _  _  _  _  )
+
+                # print('---')
+                # print('parts', parts)
+                # print('len(parts[0])', len(parts[0]))
+
+                # if len(parts[0])是为了处理这种不是以"("开头的，如果以"("开头，那么就parts[0]就是空，而不以（开头的，就不是空，包括以
+                # 其他开头但是包含(的，如)(EntityID=1，也包括其中不包含(的，如)))，注意对于str.split('(')，如果str中不包含(，那么会返回str本身（这个我之前居然忘记了）
+                # 不管以上是哪两种情况，都是以)开头，有一种情况是上述说到的)))，这种是嵌套的entity，而另外一种情况是下述这种
+                # 如果是这个，那么就代表是类似于)(EntityID=2|MarkableID=markable_160|Min=4|SemType=dn)这种，这种代表着这个本身是一个entity,但是它又是一个更大的entity的结尾，如
+                # 1     a           _  _  _  _  _  _  _  _  (EntityID=1|MarkableID=markable_1|Min=4|SemType=dn
+                # 2     suit        _  _  _  _  _  _  _  _  _
+                # 3     of          _  _  _  _  _  _  _  _  _
+                # 4     armor       _  _  _  _  _  _  _  _  )(EntityID=2|MarkableID=markable_160|Min=4|SemType=dn)
+
+                # if len(parts[0])>1:
+                #     print('aaaaa')
+                # if len(parts[0])<1:
+                #     print('bbbbb')
+                if len(parts[0]): # the close bracket
                     for _ in range(len(parts[0])):
+                        # print('-')
+                        # print('self.coref_stacks', self.coref_stacks)
+                        # 当我刚看到这里这个 self.coref_stacks的时候，我不知道是从哪里来的。后来测试后才发现，它一开始是空的，然后通过下面的句子去获得。
+                        # 这是一个栈，后进先出，用来处理这种嵌套的
                         cluster_id, start = self.coref_stacks.pop()
                         self.clusters[cluster_id].append((start, last_subtoken_idx))
+
                 for part in parts[1:]:
-#                     print(coref)
-                    entity = part.split("|")[0].split("=")[1].split("-")[0]
+                    # print(coref)
+                    entity = part.split("|")[0].split("=")[1].split("-")[0] #这里entity写出entityid更好
+                    # print('entity', entity)
                     cluster_id = int(entity)
+
+                    # 如果是以')'结尾的，就代表这个entity是由一个token组成的。那么就把subtoken是信息存储到clusters，否则就存储到栈！
+                    # print('part[-1]', part[-1])
                     if part[-1] == ')':
+                        # print('first_subtoken_idx', first_subtoken_idx)
+                        # print('last_subtoken_idx', last_subtoken_idx)
+                        # print('self.subtokens[first_subtoken_idx]', self.subtokens[first_subtoken_idx])
+                        # print('self.subtokens[last_subtoken_idx]', self.subtokens[last_subtoken_idx])
+                        # print('self.subtokens[first_subtoken_idx:last_subtoken_idx]', self.subtokens[first_subtoken_idx-1:last_subtoken_idx-1])
                         self.clusters[cluster_id].append((first_subtoken_idx, last_subtoken_idx))
+                        #TODO：这里是有问题的，打印self.subtokens[first_subtoken_idx]和self.subtokens[last_subtoken_idx]，出现的不对。
+                        # 我感觉这里是有问题的！！！具体要看看后面是怎么用的。难不成问题就出来这里？
+                        # 后续打印出来观察后发现，存储的first_subtoken_idx, last_subtoken_idx都是从1开始计数的，所以可能在使用的时候考虑过这种情况
                     else:
+                        # print('(cluster_id, first_subtoken_idx)', (cluster_id, first_subtoken_idx))
                         self.coref_stacks.append((cluster_id, first_subtoken_idx))
 
-#                     print(self.coref_stacks)
+                    # print(self.coref_stacks)
 
 #                 else:
 #                     parts = coref.split(")")
@@ -298,6 +370,10 @@ class UADocumentState(DocumentState):
 
         # Merge clusters if any clusters have common mentions
         merged_clusters = []
+        # print('self.clusters', self.clusters)
+        # print('self.subtokens', self.subtokens)
+        # print('self.clusters.values()', self.clusters.values())
+        # 算了，先不看了，等到遇到了再看吧。暂时不太用得到！
         for cluster in self.clusters.values():
             existing = None
             for mention in cluster:
@@ -346,25 +422,64 @@ def split_into_segments(document_state: DocumentState, max_seg_len, constraints1
     """
     curr_idx = 0  # Index for subtokens
     prev_token_idx = 0
+
+    # ！！！这种while的核心就看两个地方，一个是停止条件里的变量（curr_idx)，一个是它是怎么变动的（curr_idx = end_idx + 1）
+    # 此处通过这两个可以看到，它是curr_idx在循环，循环的重点是document_state.subtokens，步长是每一个seg
+    # print('split_into_segments document_state.subtokens', document_state.subtokens)
+
+    print('-----')
+    print('document_state.doc_key', document_state.doc_key)
+    print('len(document_state.subtokens)', len(document_state.subtokens))
+
     while curr_idx < len(document_state.subtokens):
         # Try to split at a sentence end point
+
+        # 这里的max_seg_len的意思是单个seg的subtoken最大的设置长度，比如128。下面这个min的意思是：
+        # 这个的意思是如果subtokens（比如是100）比max_seg_len（比如128）小，那么就把99当作是end_idx（即最后一个subtokens)
+        # 如果是subtokens还剩下很多（比如1000），那么就截取max_seg_len长度的
+        # 这里-1是因为下面segment那里写的是end_idx + 1，如果下面那里直接写end_idx，那么这里也不再需要-1。这里-2是因为添加了tokenizer.cls_token和tokenizer.sep_token
         end_idx = min(curr_idx + max_seg_len - 1 - 2, len(document_state.subtokens) - 1)  # Inclusive
+        # print('curr_idx', curr_idx)
+        # print('end_idx 1', end_idx)
+
+        # print('constraints1', constraints1)
+        # not constraints1[end_idx]的意思是如果end_idx不是句子的结尾（英语）；整个句子的意思是这个end_idx不是句子的结尾，且
+        # 目前end_idx仍然大于等于curr_idx，那么回退end_idx，直到到达句子的末尾，或者是end_idx已经小于end_idx了，就停止
+        # ！注意while这里是执行条件，里面就是什么情况下执行（反过来就是什么情况下停止）。这里是把"意外终止条件"和"逻辑条件"写在一起了，所以有点难懂
         while end_idx >= curr_idx and not constraints1[end_idx]:
             end_idx -= 1
+            # print('end_idx go back')
+        # print('end_idx 2', end_idx)
+
+        # 如果上面那个while的end_idx一直执行直到end_idx < curr_idx（因为数据里没有句子末尾），那么就重新进行seg拆分，新方式采用
         if end_idx < curr_idx:
             logger.info(f'{document_state.doc_key}: no sentence end found; split at token end')
             # If no sentence end point, try to split at token end point
             end_idx = min(curr_idx + max_seg_len - 1 - 2, len(document_state.subtokens) - 1)
+            # 这里的constraints2根据调用它的部分可以知道就是document_state.token_end
             while end_idx >= curr_idx and not constraints2[end_idx]:
                 end_idx -= 1
             if end_idx < curr_idx:
                 logger.error('Cannot split valid segment: no sentence end or token end')
 
+        # 生成一个segment
+        # print('curr_idx 3', curr_idx)
+        # print('end_idx 3', end_idx)
+        # 由于subtoken的限制，segment的长度不一定是512，可能略少（但是不会更多，因为end_idx是往回走）
         segment = [tokenizer.cls_token] + document_state.subtokens[curr_idx: end_idx + 1] + [tokenizer.sep_token]
+        # print('len(segment)', len(segment))
         document_state.segments.append(segment)
 
+        # print('curr_idx', curr_idx)
+        # print('end_idx', end_idx)
+        # print('subtoken_map', document_state.subtoken_map)
         subtoken_map = document_state.subtoken_map[curr_idx: end_idx + 1]
+        print('subtoken_map', subtoken_map)
+        # print('len(ubtoken_map)', len(subtoken_map))
+        # 这里添加prev_token_idx和subtoken_map[-1]是因为上面加了[tokenizer.cls_token]和[tokenizer.sep_token]
         document_state.segment_subtoken_map.append([prev_token_idx] + subtoken_map + [subtoken_map[-1]])
+        # print('new subtoken_map', [prev_token_idx] + subtoken_map + [subtoken_map[-1]])
+        # print('document_state.segment_subtoken_map', document_state.segment_subtoken_map)
 
         document_state.segment_info.append([None] + document_state.info[curr_idx: end_idx + 1] + [None])
 
@@ -552,29 +667,62 @@ def get_all_docs(path):
     print('path:', path)
     # https://stackoverflow.com/questions/40997603
     for line in open(path, encoding='utf-8'): # LK add encoding='utf-8'
-        line = line.strip()
+        # print('get_all_docs line 0:', line) #就是一行一行的
+        # print('len(get_all_docs line 0):', len(line))  # 就是一行一行的
+        line = line.strip() #去除两边的空格
+        # print('get_all_docs line 1:', line) #就是一行一行的
+        # print('len(get_all_docs line 1):', len(line))  # 就是一行一行的
+        # 这里就涉及到这里的一个数据结构，以# newdoc id = 开头的小段落，它都是紧跟一个setting，这个setting里包含一句话，这句话
+        # 的sent_id是newdoc id-1，即第一句话
         if line.startswith('# newdoc'):
+            # print('line with # newdoc:', line)
+            # print('doc_name:', doc_name)
+            # print('doc_lines:', doc_lines)
+
+            # 这里的意思是，如果之前已经有doc_name和doc_lines了，则对之前的进行下存档，并且初始化doc_lines和sentences
+            # 是一种前置判断！
             if doc_name and doc_lines:
+                # print('aaaaa')
                 all_docs[doc_name] = doc_lines
                 all_doc_sents[doc_name] = sentences
                 doc_lines = []
                 sentences = []
+            # 初始化cur_spk和doc_name
             cur_spk = "_"
-            doc_name = line[len('# newdoc id = '):]
+            doc_name = line[len('# newdoc id = '):] #这里写的非常好，用len('# newdoc id = ')而不是14，可读性非常好
+
+        # 每一个新的turn_id都会有speaker，代表着新一轮对话。而如果下一句话还是这个人说的，那么就只会有sent_id和text，不会有turn_id
+        # 和speaker。第一个文档light_dev/episode_7296就是个很好的体会这个数据结构的例子。
         elif "# speaker = " in line:
             cur_spk = line[len('# speaker = '):]
+
+        # 如果一个行以#开头，那么就跳过，这些就是不需要处理的普通行，这些行包括有# global.columns/# setting/# sent_id/# text/# turn_id等等（懒得列举了，总之就是剩余所有行）
         elif line.startswith('#'):
             continue
+
+        # 如果是空行，那么就采取结束操作：把这个sentence的list添加到sentences里，然后把sentence给清空
         elif len(line) == 0:
             sentences.append(sentence)
             sentence = []
             continue
+
+        # 以上的空行或者以#开头的，都是一些特殊的行。而else这里都是一些内容行，就是那些以数字开头的每一个token的行
         else:
+            # print('line 0', line)
             splt_line = line.split()
-            splt_line[9] = "_".join(cur_spk.split())
+            # print('splt_line', splt_line)
+            # 第9个是MISC这一列，从文档https://github.com/UniversalAnaphora/UniversalAnaphora/blob/main/documents/UA_CONLL_U_Plus_proposal_v1.0.md
+            # 里可以看出来，MISC是用来"using the Misc column to encode all information ("CONLL-U-Compact") proposed by Anna Nedoluzhko and Amir Zeldes."
+            # 包含所有信息的。之类是把current_speaker给加进去了。可能是因为这个字段是把所有东西都往里塞的吧。
+            splt_line[9] = "_".join(cur_spk.split()) # MISC
+            # print('"_".join(cur_spk.split())', "_".join(cur_spk.split()))
+            # print('splt_line[9]', splt_line[9])
+
+            # 这里又把splt_line给重新合起来变成line了，这个和else那一行下面那个原始的line还是稍微有点不一样。之前那个各个行之间是有多个空格的。而这个新弄的各个字段之间只有一个空格
             line = " ".join(splt_line)
+            # print('line 1', line)
             doc_lines.append(line)
-            sentence.append(splt_line[1])
+            sentence.append(splt_line[1]) #在sentence这个列表里加入splt_line的第一个，即FORM（即token)
                 
     sentences.append(sentence)
     if doc_name and doc_lines:
@@ -596,25 +744,63 @@ def get_document(doc_key, doc_lines, language, seg_len, tokenizer):
 
     # Build up documents
     for line in doc_lines:
-#         print(line)
+        # print('line', line)
         row = line.split()  # Columns for each token
+        # print('row', row)
+        # print('len(row)', len(row))
+        # 只有这一行是一个完全的空行，它才会等于0，然后sentence_end才会是True。所以这个sentence_end的意思是"这个句子的末尾一行"。像是用来处理那种留空的行。
+        # 像这种行其实不会很多，因此大部分的sentence_end都是False
+        # Todo  # 在light_dev.2022.CONLLUA这个文件里是没有sentence_end的，全部为False.light_train也没有。
         if len(row) == 0:
-            document_state.sentence_end[-1] = True
+            document_state.sentence_end[-1] = True # 这个只有空行的时候才会是True
+            # print('document_state.sentence_end', document_state.sentence_end)
         else:
             word_idx += 1
             word = normalize_word(row[1], language)
-            subtokens = tokenizer.tokenize(word)
-            document_state.tokens.append(word)
-            document_state.token_end += [False] * (len(subtokens) - 1) + [True]
+            subtokens = tokenizer.tokenize(word) # !!! subtokens就是tokenizer后的TOKEN。tokens就是原始的word
+            document_state.tokens.append(word) # 注意这里的tokens是会有重复的！
+
+            # if subtokens[0] != word:
+            #     print('word', word)
+            #     print('subtokens', subtokens)
+
+            # 感觉这里的名字起的不好，应该叫subtoken_end。不过暂时先这样吧
+            document_state.token_end += [False] * (len(subtokens) - 1) + [True] # 这里我没有细致测试，就认为它是对的好了，看意思不难明白它的作用
+            # print('document_state.tokens', document_state.tokens)
+            # print('document_state.token_end', document_state.token_end)
+
+            # 这里是处理subtokens
             for idx, subtoken in enumerate(subtokens):
                 document_state.subtokens.append(subtoken)
+                # print('row', row)
+                # print('subtokens', subtokens)
+
+                # info就是把整个行row的末尾加上subtokens的长度，比如1、2。只有idx=0的时候才会放进去，比如word='strive', subtokens= ['s', '##tri', '##ve']
+                # 那么就只有's'这一个有info信息，其他的都是None
                 info = None if idx != 0 else (row + [len(subtokens)])
+                # if len(subtokens)>1 : print('info', info)
+                # print('info', info)
                 document_state.info.append(info)
-                document_state.sentence_end.append(False)
-                document_state.subtoken_map.append(word_idx)
+                document_state.sentence_end.append(False) #从这里可以看出来，sentence_end是针对subtoken的
+                # word_idx是会有重复的，当subtokens有大于等于两个的时候，word_idx就产生了重复。word_idx就是这个subtokens对应的word的idx！
+                document_state.subtoken_map.append(word_idx) #subtoken_map放着这个subtoken的index
+
+        # 上述逻辑完成后的检验：
+        # if int(row[0]) <= 20:
+        #     print('------')
+        #     print('line', line)
+        #     print('document_state.tokens', document_state.tokens)
+        #     print('document_state.subtokens', document_state.subtokens)
+        #     print('document_state.token_end', document_state.token_end)
+        #     print('document_state.info', document_state.info)
+        #     print('document_state.sentence_end', document_state.sentence_end)
+        #     print('document_state.subtoken_map', document_state.subtoken_map)
+
 
     # Split documents
     constraits1 = document_state.sentence_end if language != 'arabic' else document_state.token_end
+    # print('constraits1', constraits1)
+    # 看名字就知道是把文档拆分为很多个segment。这里是针对每个doc(newdoc id)来拆分的，因为现在所在的这个函数get_document是限定了doc_key的
     split_into_segments(document_state, seg_len, constraits1, document_state.token_end, tokenizer)
     document = document_state.finalize()
     return document
