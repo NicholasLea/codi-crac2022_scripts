@@ -19,9 +19,9 @@ import helper
 #                                 MODEL="coref-hoi", SEGMENT_SIZE=512, TOKENIZER_NAME="spanbert-base-cased")
 
 # mac代码
-# helper.convert_coref_ua_to_json('/Users/nicholas/Documents/Dataset/LIGHT/light_dev.2022.CONLLUA', \
-#                                 '/Users/nicholas/Documents/Dataset/LIGHT/light_train.2022.bert-base-cased.jsonlines', \
-#                                 MODEL="coref-hoi", SEGMENT_SIZE=512, TOKENIZER_NAME="bert-base-cased")
+helper.convert_coref_ua_to_json('/Users/nicholas/Documents/Dataset/LIGHT/light_train.2022.CONLLUA', \
+                                '/Users/nicholas/Documents/Dataset/LIGHT/light_train.2022.bert-base-cased.jsonlines', \
+                                MODEL="coref-hoi", SEGMENT_SIZE=512, TOKENIZER_NAME="bert-base-cased")
 
 helper.convert_coref_ua_to_json('/Users/nicholas/Documents/Dataset/LIGHT/light_dev.2022.CONLLUA', \
                                 '/Users/nicholas/Documents/Dataset/LIGHT/light_dev.2022.bert-base-cased.jsonlines', \
