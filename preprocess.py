@@ -474,7 +474,7 @@ def split_into_segments(document_state: DocumentState, max_seg_len, constraints1
         # print('end_idx', end_idx)
         # print('subtoken_map', document_state.subtoken_map)
         subtoken_map = document_state.subtoken_map[curr_idx: end_idx + 1]
-        print('subtoken_map', subtoken_map)
+        # print('subtoken_map', subtoken_map)
         # print('len(ubtoken_map)', len(subtoken_map))
         # 这里添加prev_token_idx和subtoken_map[-1]是因为上面加了[tokenizer.cls_token]和[tokenizer.sep_token]
         document_state.segment_subtoken_map.append([prev_token_idx] + subtoken_map + [subtoken_map[-1]])
