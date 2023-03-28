@@ -247,7 +247,7 @@ class UADocumentState(DocumentState):
 
     # 这个类里只有这一个方法
     def finalize(self):
-        print('finalize 开始')
+        # print('finalize 开始')
         # print('self.coref_stacks 开始', self.coref_stacks) # 此时为空
         """ Extract clusters; fill other info e.g. speakers, pronouns """
         # Populate speakers from info
@@ -664,7 +664,7 @@ def get_all_docs(path):
     sentences = []
     sentence = []
     doc_name = None
-    print('path:', path)
+    print('-----path-----:', path)
     # https://stackoverflow.com/questions/40997603
     for line in open(path, encoding='utf-8'): # LK add encoding='utf-8'
         # print('get_all_docs line 0:', line) #就是一行一行的
